@@ -12,6 +12,8 @@ Base package: com.aadil.shopqueue
 ## Architecture rules
 - Package by feature: job/, worker/, client/, order/, common/
 - worker/ must NEVER import from job/. Workers use JobQueueClient only.
+- client/ must NEVER import from job/. It has its own DTOs (NewJob, QueuedJob)
+  so it can be extracted into a separate library later.
 - order/ must NEVER import from job/; it enqueues via JobQueueClient.
   job/ must NEVER import from order/ — the queue stays domain-agnostic.
 - Package rules are enforced by ArchitectureTest (ArchUnit).

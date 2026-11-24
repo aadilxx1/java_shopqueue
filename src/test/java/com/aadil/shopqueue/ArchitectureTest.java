@@ -17,6 +17,13 @@ class ArchitectureTest {
             .should().dependOnClassesThat().resideInAPackage("..job..")
             .allowEmptyShould(true);
 
+    /** The client must be extractable into its own library, so it can't reach into the queue. */
+    @ArchTest
+    static final ArchRule clientDoesNotDependOnJob = noClasses()
+            .that().resideInAPackage("..client..")
+            .should().dependOnClassesThat().resideInAPackage("..job..")
+            .allowEmptyShould(true);
+
     @ArchTest
     static final ArchRule orderDoesNotDependOnJob = noClasses()
             .that().resideInAPackage("..order..")

@@ -3,3 +3,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/shopqueue
     username: shopqueue
     password: shopqueue
+
+shopqueue:
+  worker:
+    enabled: true
