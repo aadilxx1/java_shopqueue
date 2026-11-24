@@ -1,5 +1,6 @@
 package com.aadil.shopqueue.job;
 
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -70,6 +71,19 @@ public class JobService {
     @Transactional
     public void heartbeat(UUID id, String workerId) {
         requireFencedUpdate(repository.heartbeat(id, workerId), id, workerId);
+    }
+
+    /**
+     * Reclaims RUNNING jobs with no heartbeat for longer than {@code timeout}.
+     *
+     * @return ids of the jobs that were reclaimed (back to PENDING, or FAILED if out of attempts)
+     */
+    @Transactional
+    public List<UUID> reapStale(Duration timeout) {
+        if (timeout.isNegative() || timeout.isZero()) {
+            throw new IllegalArgumentException("Reaper timeout must be positive, was " + timeout);
+        }
+        return repository.reapStale(timeout.toMillis() / 1000.0);
     }
 
     /** 0 rows means either the job doesn't exist or this worker no longer holds it. */
