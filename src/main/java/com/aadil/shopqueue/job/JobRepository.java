@@ -90,4 +90,26 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
             WHERE id = :id AND status = 'RUNNING' AND locked_by = :workerId
             """, nativeQuery = true)
     int heartbeat(@Param("id") UUID id, @Param("workerId") String workerId);
+
+    /**
+     * Takes back RUNNING jobs whose worker stopped heartbeating: PENDING again while
+     * attempts remain, otherwise FAILED. Clearing locked_by is what fences the old
+     * worker out — its next complete/fail/heartbeat matches 0 rows.
+     *
+     * <p>Safe to run from several instances at once: if a heartbeat or another reaper
+     * updates the row first, Postgres re-checks the WHERE clause and skips it.
+     * SET expressions see the row's old values, so last_error can name the old worker.
+     */
+    @Query(value = """
+            UPDATE jobs
+            SET status = CASE WHEN attempts >= max_attempts THEN 'FAILED' ELSE 'PENDING' END,
+                run_at = CASE WHEN attempts >= max_attempts THEN run_at ELSE now() END,
+                last_error = 'Reclaimed: worker ' || locked_by
+                             || ' stopped heartbeating (last heartbeat ' || heartbeat_at::text || ')',
+                locked_by = NULL, locked_at = NULL, heartbeat_at = NULL
+            WHERE status = 'RUNNING'
+              AND heartbeat_at < now() - make_interval(secs => :timeoutSeconds)
+            RETURNING id
+            """, nativeQuery = true)
+    List<UUID> reapStale(@Param("timeoutSeconds") double timeoutSeconds);
 }
